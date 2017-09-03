@@ -16,7 +16,6 @@ struct Config {
 
 struct Mandelbrot {
     conf: Config,
-    data: Vec<u16>,
 }
 
 impl Mandelbrot {
@@ -30,7 +29,6 @@ impl Mandelbrot {
                 center_x: center_x,
                 center_y: center_y,
             },
-            data: vec!(0; (width*height) as usize),
         }
     }
 
@@ -42,23 +40,24 @@ impl Mandelbrot {
         self.conf.h
     }
 
-    pub fn get(&self, x: u32, y: u32) -> u16 {
-        self.data[(y*self.conf.w + x) as usize]
-    }
+    pub fn render(&self) -> image::GrayImage {
+        let mut imgbuf = image::ImageBuffer::new(self.width(), self.height());
 
-    pub fn render(&mut self) {
-        for (i, mut item) in self.data.iter_mut().enumerate() {
-            *item = Self::calc_pixel(&self.conf, i);
+        for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+            let iterations = Self::calc_pixel(&self.conf, x as f32, y as f32);
+            *pixel = image::Luma([iterations as u8]);
         }
+
+        imgbuf
     }
 
-    fn calc_pixel(conf: &Config, i: usize) -> u16 {
+    fn calc_pixel(conf: &Config, x: f32, y: f32) -> u16 {
         let scaled_x = 3.5 / conf.w as f32;
         let scaled_y = 2.0 / conf.h as f32;
-
+/*
         let x = i as f32 % conf.w as f32;
         let y = i as f32 / conf.w as f32;
-
+*/
         let cx = (x as f32 * scaled_x - 1.75) + conf.center_x;
         let cy = (y as f32 * scaled_y - 1.00) + conf.center_y;
 
@@ -75,20 +74,15 @@ impl Mandelbrot {
             iter = i;
         }
 
-        conf.max_iter-iter
+        iter
     }
 }
 
 
 fn main() {
-    let mut mb = Mandelbrot::new(4000, -0.75, 0.00);
-    mb.render();
+    let mb = Mandelbrot::new(4000, -0.75, 0.00);
 
-    let mut imgbuf = image::ImageBuffer::new(mb.width(), mb.height());
-    for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-        *pixel = image::Luma([mb.get(x, y) as u8]);
-    }
-
+    let imgbuf = mb.render();
     let ref mut fout = File::create(&Path::new("fractal.png")).unwrap();
     let _ = image::ImageLuma8(imgbuf).save(fout, image::PNG);
 }
