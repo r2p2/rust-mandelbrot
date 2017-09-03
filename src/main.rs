@@ -1,10 +1,12 @@
 extern crate num;
 extern crate image;
+extern crate rayon;
 
 use std::fs::File;
 use std::path::Path;
 
 use num::complex::Complex;
+use rayon::prelude::*;
 
 struct Config {
     max_iter: u16,
@@ -45,8 +47,15 @@ impl Mandelbrot {
     pub fn render(&self) -> image::GrayImage {
         let mut imgbuf = image::ImageBuffer::new(self.width(), self.height());
 
+        let cells = vec!(0u16; (self.width() * self.height()) as usize);
+        let cells2 = cells.par_iter().enumerate().map(move |(i, _)| {
+                let x = i as f32 % self.width() as f32;
+                let y = i as f32 / self.width() as f32;
+                Self::calc_pixel(&self.conf, x, y)
+            }).collect::<Vec<u16>>();
+
         for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-            let iterations = Self::calc_pixel(&self.conf, x as f32, y as f32);
+            let iterations = cells2[(y*self.width() + x) as usize];
             *pixel = image::Luma([iterations as u8]);
         }
 
@@ -56,10 +65,7 @@ impl Mandelbrot {
     fn calc_pixel(conf: &Config, x: f32, y: f32) -> u16 {
         let scaled_x = (1.0 / conf.zoom * 3.5) / conf.w as f32;
         let scaled_y = (1.0 / conf.zoom * 2.0) / conf.h as f32;
-/*
-        let x = i as f32 % conf.w as f32;
-        let y = i as f32 / conf.w as f32;
-*/
+
         let cx = (x as f32 * scaled_x - (1.0 / conf.zoom * 1.75)) + conf.center_x;
         let cy = (y as f32 * scaled_y - (1.0 / conf.zoom * 1.00)) + conf.center_y;
 
