@@ -7,3 +7,5 @@ authors = ["Robert Peters <r2p2.gw@gmail.com>"]
 num = "*"
 image = "*"
 rayon = "*"
+hyper = "*"
+futures = "*"

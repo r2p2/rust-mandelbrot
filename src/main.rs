@@ -1,10 +1,15 @@
 extern crate num;
 extern crate image;
+extern crate hyper;
+extern crate futures;
 
 use std::fs::File;
 use std::path::Path;
 
 use num::complex::Complex;
+
+use hyper::header::ContentLength;
+use hyper::server::{Http, Request, Response, Service};
 
 struct Config {
     max_iter: u16,
@@ -80,10 +85,32 @@ impl Mandelbrot {
     }
 }
 
+struct MandelbrotService;
+
+impl Service for MandelbrotService {
+    type Request = Request;
+    type Response = Response;
+    type Error = hyper::Error;
+
+    type Future = futures::future::FutureResult<Self::Response, Self::Error>;
+    fn call(&self, _req: Self::Request) -> Self::Future {
+        let text = "Hello, World!";
+        futures::future::ok(
+            Response::new()
+                .with_header(ContentLength(text.len() as u64))
+                .with_body(text)
+        )
+    }
+}
+
 fn main() {
     let mb = Mandelbrot::new(4000, -0.75, 0.00, 1.00);
 
     let imgbuf = mb.render();
     let ref mut fout = File::create(&Path::new("fractal.png")).unwrap();
     let _ = image::ImageLuma8(imgbuf).save(fout, image::PNG);
+
+    let addr = "127.0.0.1:3000".parse().unwrap();
+    let server = Http::new().bind(&addr, || Ok(MandelbrotService)).unwrap();
+    server.run().unwrap();
 }
