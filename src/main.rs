@@ -7,10 +7,15 @@ use std::path::Path;
 use num::complex::Complex;
 
 trait Drawable {
+    fn check_size(&self, width: u32, height: u32) -> bool;
     fn draw(&mut self, x: u32, y: u32, val: u8);
 }
 
 impl Drawable for image::GrayImage {
+    fn check_size(&self, width: u32, height: u32) -> bool {
+        self.width() == width && self.height() == height
+    }
+
     fn draw(&mut self, x: u32, y: u32, val: u8) {
         *self.get_pixel_mut(x, y) = image::Luma([val as u8]);
     }
@@ -53,6 +58,10 @@ impl Mandelbrot {
     }
 
     pub fn render(&self, canvas: &mut Drawable) {
+        if ! canvas.check_size(self.width(), self.height()) {
+            return
+        }
+
         for i in 0..(self.width()*self.height()) {
             let x = i % self.width();
             let y = i / self.width();
