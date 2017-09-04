@@ -6,6 +6,16 @@ use std::path::Path;
 
 use num::complex::Complex;
 
+trait Drawable {
+    fn draw(&mut self, x: u32, y: u32, val: u8);
+}
+
+impl Drawable for image::GrayImage {
+    fn draw(&mut self, x: u32, y: u32, val: u8) {
+        *self.get_pixel_mut(x, y) = image::Luma([val as u8]);
+    }
+}
+
 struct Config {
     max_iter: u16,
     w: u32,
@@ -42,15 +52,13 @@ impl Mandelbrot {
         self.conf.h
     }
 
-    pub fn render(&self) -> image::GrayImage {
-        let mut imgbuf = image::ImageBuffer::new(self.width(), self.height());
+    pub fn render(&self, canvas: &mut Drawable) {
+        for i in 0..(self.width()*self.height()) {
+            let x = i % self.width();
+            let y = i / self.width();
 
-        for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-            let iterations = Self::calc_pixel(&self.conf, x as f32, y as f32);
-            *pixel = image::Luma([iterations as u8]);
+            canvas.draw(x, y, Self::calc_pixel(&self.conf, x as f32, y as f32) as u8);
         }
-
-        imgbuf
     }
 
     fn calc_pixel(conf: &Config, x: f32, y: f32) -> u16 {
@@ -83,7 +91,10 @@ impl Mandelbrot {
 fn main() {
     let mb = Mandelbrot::new(4000, -0.75, 0.00, 1.00);
 
-    let imgbuf = mb.render();
+    let mut imgbuf = image::ImageBuffer::new(mb.width(), mb.height());
+
+    mb.render(&mut imgbuf);
+
     let ref mut fout = File::create(&Path::new("fractal.png")).unwrap();
     let _ = image::ImageLuma8(imgbuf).save(fout, image::PNG);
 }
